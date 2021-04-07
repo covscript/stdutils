@@ -83,8 +83,6 @@ CNI_ROOT_NAMESPACE {
 			return val.to_string();
 		})
 		CNI_CONST_V(from_number, [](cs::number val) {
-			if (val < 0)
-				throw cs::lang_error("Bitset value can not under zero.");
 			return bitset_t(static_cast<std::uint64_t>(val));
 		})
 		CNI_CONST(from_string)
