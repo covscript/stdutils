@@ -8,7 +8,7 @@ using bitset_t = std::bitset<std::numeric_limits<std::uint64_t>::digits>;
 CNI_ROOT_NAMESPACE {
 	bitset_t from_string(const std::string &data)
 	{
-		if (data.length() > 16)
+		if (data.length() > 18)
 			throw cs::lang_error("Wrong literal(length > 16).");
 		std::uint64_t hex = 0;
 		auto current = data.c_str() + 2;
