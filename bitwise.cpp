@@ -73,8 +73,8 @@ CNI_ROOT_NAMESPACE {
 		CNI_CONST_V(shift_right, [](const bitset_t &val, std::size_t pos) {
 			return val >> pos;
 		})
-		CNI_CONST_V(to_hash, [](const bitset_t &val) -> std::size_t {
-			return val.to_ullong();
+		CNI_CONST_V(to_hash, [](const bitset_t &val) {
+			return cs::var(val.to_ullong());
 		})
 		CNI_CONST_V(to_number, [](const bitset_t &val) -> cs::number {
 			return val.to_ulong();
