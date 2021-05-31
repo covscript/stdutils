@@ -32,9 +32,15 @@ else ()
 endif ()
 
 add_library(bitwise SHARED bitwise.cpp)
+add_library(sdk_extension SHARED bitwise.cpp)
 
 target_link_libraries(bitwise covscript)
+target_link_libraries(sdk_extension covscript)
 
 set_target_properties(bitwise PROPERTIES OUTPUT_NAME bitwise)
 set_target_properties(bitwise PROPERTIES PREFIX "")
 set_target_properties(bitwise PROPERTIES SUFFIX ".cse")
+
+set_target_properties(sdk_extension PROPERTIES OUTPUT_NAME sdk_extension)
+set_target_properties(sdk_extension PROPERTIES PREFIX "")
+set_target_properties(sdk_extension PROPERTIES SUFFIX ".cse")
