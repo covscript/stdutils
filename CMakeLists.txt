@@ -32,7 +32,7 @@ else ()
 endif ()
 
 add_library(bitwise SHARED bitwise.cpp)
-add_library(sdk_extension SHARED bitwise.cpp)
+add_library(sdk_extension SHARED sdk_extension.cpp)
 
 target_link_libraries(bitwise covscript)
 target_link_libraries(sdk_extension covscript)

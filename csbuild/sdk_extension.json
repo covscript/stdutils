@@ -1,0 +1,9 @@
+{
+    "Type": "Extension",
+    "Name": "sdk_extension",
+    "Info": "CovScript SDK Extension",
+    "Author": "CovScript Organization",
+    "Version": "1.0.1",
+    "Target": "build/imports/sdk_extension.cse",
+    "Dependencies": []
+}
