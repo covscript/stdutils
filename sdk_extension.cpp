@@ -154,4 +154,11 @@ CNI_ROOT_NAMESPACE {
 	}
 
 	CNI(predict_global_symbols)
+
+	void extend_type(cs::type_t &type, const std::string &name, const var &obj)
+	{
+		type.extensions->add_var(name, obj);
+	}
+
+	CNI(extend_type)
 }
