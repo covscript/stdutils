@@ -4,3 +4,4 @@ cmake-build/
 cspkg-repo/
 bitwise.json
 bitwise.cse
+.DS_Store
