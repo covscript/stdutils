@@ -31,11 +31,18 @@ else ()
     set(CMAKE_CXX_FLAGS "-fPIC -O3")
 endif ()
 
+add_library(cffi SHARED cffi.cpp)
 add_library(bitwise SHARED bitwise.cpp)
 add_library(sdk_extension SHARED sdk_extension.cpp)
+add_library(test_cffi SHARED test_cffi.cpp)
 
+target_link_libraries(cffi ffi covscript)
 target_link_libraries(bitwise covscript)
 target_link_libraries(sdk_extension covscript)
+
+set_target_properties(cffi PROPERTIES OUTPUT_NAME cffi)
+set_target_properties(cffi PROPERTIES PREFIX "")
+set_target_properties(cffi PROPERTIES SUFFIX ".cse")
 
 set_target_properties(bitwise PROPERTIES OUTPUT_NAME bitwise)
 set_target_properties(bitwise PROPERTIES PREFIX "")
@@ -44,3 +51,7 @@ set_target_properties(bitwise PROPERTIES SUFFIX ".cse")
 set_target_properties(sdk_extension PROPERTIES OUTPUT_NAME sdk_extension)
 set_target_properties(sdk_extension PROPERTIES PREFIX "")
 set_target_properties(sdk_extension PROPERTIES SUFFIX ".cse")
+
+set_target_properties(test_cffi PROPERTIES OUTPUT_NAME test_cffi)
+set_target_properties(test_cffi PROPERTIES PREFIX "")
+set_target_properties(test_cffi PROPERTIES SUFFIX ".csx")

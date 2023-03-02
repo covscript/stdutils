@@ -1,0 +1,9 @@
+{
+    "Type": "Extension",
+    "Name": "cffi",
+    "Info": "LibFFI Extension",
+    "Author": "CovScript Organization",
+    "Version": "1.0.0",
+    "Target": "build/imports/cffi.cse",
+    "Dependencies": []
+}

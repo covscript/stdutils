@@ -5,3 +5,7 @@ cspkg-repo/
 bitwise.json
 bitwise.cse
 .DS_Store
+*.cse
+*.csx
+*.dll
+*.so
