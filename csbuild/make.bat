@@ -7,3 +7,5 @@ cd ..\..
 rd /S /Q build
 mkdir build\imports
 xcopy /Y cmake-build\mingw-w64\*.cse build\imports\
+mkdir build\tests
+xcopy /Y cmake-build\mingw-w64\*.csx build\tests\

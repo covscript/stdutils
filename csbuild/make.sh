@@ -7,3 +7,5 @@ cd ../..
 rm -rf build
 mkdir -p build/imports
 cp cmake-build/unix/*.cse build/imports/
+mkdir -p build/tests
+cp cmake-build/unix/*.csx build/tests/
