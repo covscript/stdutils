@@ -34,7 +34,7 @@ endif ()
 add_library(cffi SHARED cffi.cpp)
 add_library(bitwise SHARED bitwise.cpp)
 add_library(sdk_extension SHARED sdk_extension.cpp)
-add_library(test_cffi SHARED test_cffi.cpp)
+add_library(test_cffi SHARED test_cffi.c)
 
 target_link_libraries(cffi ffi covscript)
 target_link_libraries(bitwise covscript)

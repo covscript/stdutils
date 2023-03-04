@@ -14,6 +14,42 @@ enum class cffi_type {
 	ffi_string
 };
 
+bool is_integer(cffi_type t) noexcept
+{
+	switch (t) {
+	case cffi_type::ffi_schar:
+	case cffi_type::ffi_sshort:
+	case cffi_type::ffi_sint:
+	case cffi_type::ffi_slong:
+	case cffi_type::ffi_uchar:
+	case cffi_type::ffi_ushort:
+	case cffi_type::ffi_uint:
+	case cffi_type::ffi_ulong:
+	case cffi_type::ffi_sint8:
+	case cffi_type::ffi_sint16:
+	case cffi_type::ffi_sint32:
+	case cffi_type::ffi_sint64:
+	case cffi_type::ffi_uint8:
+	case cffi_type::ffi_uint16:
+	case cffi_type::ffi_uint32:
+	case cffi_type::ffi_uint64:
+		return true;
+	default:
+		return false;
+	}
+}
+
+bool is_float(cffi_type t) noexcept
+{
+	switch (t) {
+	case cffi_type::ffi_double:
+	case cffi_type::ffi_float:
+		return true;
+	default:
+		return false;
+	}
+}
+
 ffi_type* get_actual_type(cffi_type t) noexcept
 {
 	switch (t) {
@@ -151,9 +187,9 @@ resource_holder* make_resource_holder(cffi_type t)  noexcept
 	switch (t) {
 	default:
 	case cffi_type::ffi_pointer:
-		return new resource_holder_impl<void*>();
+		return new resource_holder_impl<void *>();
 	case cffi_type::ffi_string:
-		return new resource_holder_impl<const char*>();
+		return new resource_holder_impl<const char *>();
 	case cffi_type::ffi_double:
 		return new resource_holder_impl<numeric_holder<double>>();
 	case cffi_type::ffi_float:
@@ -219,6 +255,10 @@ public:
 				hosted_res.emplace_back(new resource_holder_impl<cs::string>(it.const_val<cs::string>()));
 				arg_types[i] = &ffi_type_pointer;
 			}
+            else if (it.type() == typeid(void *)) {
+				hosted_res.emplace_back(new resource_holder_impl<void *>(it.const_val<void *>()));
+                arg_types[i] = &ffi_type_pointer;
+            }
 			else if (it == cs::null_pointer) {
 				hosted_res.emplace_back(new resource_holder_impl<void *>(nullptr));
 				arg_types[i] = &ffi_type_pointer;
@@ -262,16 +302,29 @@ public:
 			if (it.type() == typeid(cs::numeric)) {
 				const cs::numeric &num = it.const_val<cs::numeric>();
 				if (num.is_integer()) {
+					if (!is_integer(argtypes[i]))
+						throw cs::lang_error("Unmatched type in arguments.");
 					hosted_res.emplace_back(new resource_holder_impl<cs::numeric_integer>(num.as_integer()));
 				}
 				else {
+					if (!is_float(argtypes[i]))
+						throw cs::lang_error("Unmatched type in arguments.");
 					hosted_res.emplace_back(new resource_holder_impl<cs::numeric_float>(num.as_float()));
 				}
 			}
 			else if (it.type() == typeid(cs::string)) {
+				if (argtypes[i] != cffi_type::ffi_string)
+					throw cs::lang_error("Unmatched type in arguments.");
 				hosted_res.emplace_back(new resource_holder_impl<cs::string>(it.const_val<cs::string>()));
 			}
+            else if (it.type() == typeid(void *)) {
+                if (argtypes[i] != cffi_type::ffi_pointer)
+					throw cs::lang_error("Unmatched type in arguments.");
+				hosted_res.emplace_back(new resource_holder_impl<void *>(it.const_val<void *>()));
+            }
 			else if (it == cs::null_pointer) {
+				if (argtypes[i] != cffi_type::ffi_pointer && !is_integer(argtypes[i]))
+					throw cs::lang_error("Unmatched type in arguments.");
 				hosted_res.emplace_back(new resource_holder_impl<void *>(nullptr));
 			}
 			else
@@ -304,21 +357,45 @@ CNI_ROOT_NAMESPACE {
 
 	CNI_NAMESPACE(lib)
 	{
-		cs::callable import_func(const dll_type &dll, const std::string &name) {
-			return cs::callable(cffi_simple_callable((void(*)())dll->get_address(name)));
+		callable import_func(const dll_type &dll, const std::string &name) {
+			return callable(cffi_simple_callable((void(*)())dll->get_address(name)));
 		}
 
 		CNI(import_func)
 
-		cs::callable import_func_s(const dll_type &dll, const std::string &name, cffi_type restype, const cs::array &ats) {
+		callable import_func_s(const dll_type &dll, const std::string &name, cffi_type restype, const array &ats) {
 			std::vector<cffi_type> argtypes;
 			for (auto &it : ats)
 				argtypes.emplace_back(it.const_val<cffi_type>());
-			return cs::callable(cffi_callable((void(*)())dll->get_address(name), restype, argtypes));
+			return callable(cffi_callable((void(*)())dll->get_address(name), restype, std::move(argtypes)));
 		}
 
 		CNI(import_func_s)
 	}
+
+    CNI_NAMESPACE(utils)
+    {
+        var make_integer(void *ptr)
+        {
+            return var::make<numeric>((std::size_t)ptr);
+        }
+
+        CNI(make_integer)
+
+        var make_string(void *ptr)
+        {
+            return var::make<string>((const char*)ptr);
+        }
+
+        CNI(make_string)
+
+        bool is_nullptr(void *ptr)
+        {
+            return ptr == nullptr;
+        }
+
+        CNI(is_nullptr)
+    }
 
 	CNI_NAMESPACE(types)
 	{
