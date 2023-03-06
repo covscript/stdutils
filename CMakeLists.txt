@@ -31,6 +31,12 @@ else ()
     set(CMAKE_CXX_FLAGS "-fPIC -O3")
 endif ()
 
+find_package(PkgConfig REQUIRED)
+
+pkg_search_module(FFI REQUIRED libffi)
+include_directories(${FFI_INCLUDE_DIRS})
+link_directories(${FFI_LIBRARY_DIRS})
+
 add_library(cffi SHARED cffi.cpp)
 add_library(bitwise SHARED bitwise.cpp)
 add_library(sdk_extension SHARED sdk_extension.cpp)

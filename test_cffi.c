@@ -19,7 +19,7 @@ char *connect_str(const char *lhs, const char *rhs)
 
 void free_str(char *ptr)
 {
-	printf("\"free_str\" called, ptr = %zu\n", ptr);
+	printf("\"free_str\" called, ptr = %zu\n", (size_t)ptr);
 	free(ptr);
 }
 

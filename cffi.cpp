@@ -255,10 +255,10 @@ public:
 				hosted_res.emplace_back(new resource_holder_impl<cs::string>(it.const_val<cs::string>()));
 				arg_types[i] = &ffi_type_pointer;
 			}
-            else if (it.type() == typeid(void *)) {
+			else if (it.type() == typeid(void *)) {
 				hosted_res.emplace_back(new resource_holder_impl<void *>(it.const_val<void *>()));
-                arg_types[i] = &ffi_type_pointer;
-            }
+				arg_types[i] = &ffi_type_pointer;
+			}
 			else if (it == cs::null_pointer) {
 				hosted_res.emplace_back(new resource_holder_impl<void *>(nullptr));
 				arg_types[i] = &ffi_type_pointer;
@@ -281,14 +281,14 @@ class cffi_callable final {
 	void (*target_func)() = nullptr;
 	// Internal Data
 	mutable ffi_cif _ffi_cif;
-	std::shared_ptr<ffi_type *[]> _ffi_types;
+	std::vector<ffi_type *> _ffi_types;
 public:
 	cffi_callable(void (*ptr)(), cffi_type rt, std::vector<cffi_type> ats) : target_func(ptr), restype(rt), argtypes(std::move(ats))
 	{
-		_ffi_types.reset(new ffi_type *[argtypes.size()]);
+		_ffi_types.resize(argtypes.size());
 		for (std::size_t i = 0; i < argtypes.size(); ++i)
 			_ffi_types[i] = get_actual_type(argtypes[i]);
-		if (ffi_prep_cif(&_ffi_cif, FFI_DEFAULT_ABI, argtypes.size(), get_actual_type(restype), _ffi_types.get()) != FFI_OK)
+		if (ffi_prep_cif(&_ffi_cif, FFI_DEFAULT_ABI, argtypes.size(), get_actual_type(restype), _ffi_types.data()) != FFI_OK)
 			throw cs::runtime_error("Init libffi CIF failed!");
 	}
 	cs::var operator()(cs::vector &args) const
@@ -317,11 +317,11 @@ public:
 					throw cs::lang_error("Unmatched type in arguments.");
 				hosted_res.emplace_back(new resource_holder_impl<cs::string>(it.const_val<cs::string>()));
 			}
-            else if (it.type() == typeid(void *)) {
-                if (argtypes[i] != cffi_type::ffi_pointer)
+			else if (it.type() == typeid(void *)) {
+				if (argtypes[i] != cffi_type::ffi_pointer)
 					throw cs::lang_error("Unmatched type in arguments.");
 				hosted_res.emplace_back(new resource_holder_impl<void *>(it.const_val<void *>()));
-            }
+			}
 			else if (it == cs::null_pointer) {
 				if (argtypes[i] != cffi_type::ffi_pointer && !is_integer(argtypes[i]))
 					throw cs::lang_error("Unmatched type in arguments.");
@@ -373,29 +373,26 @@ CNI_ROOT_NAMESPACE {
 		CNI(import_func_s)
 	}
 
-    CNI_NAMESPACE(utils)
-    {
-        var make_integer(void *ptr)
-        {
-            return var::make<numeric>((std::size_t)ptr);
-        }
+	CNI_NAMESPACE(utils)
+	{
+		var make_integer(void *ptr) {
+			return var::make<numeric>((std::size_t)ptr);
+		}
 
-        CNI(make_integer)
+		CNI(make_integer)
 
-        var make_string(void *ptr)
-        {
-            return var::make<string>((const char*)ptr);
-        }
+		var make_string(void *ptr) {
+			return var::make<string>((const char*)ptr);
+		}
 
-        CNI(make_string)
+		CNI(make_string)
 
-        bool is_nullptr(void *ptr)
-        {
-            return ptr == nullptr;
-        }
+		bool is_nullptr(void *ptr) {
+			return ptr == nullptr;
+		}
 
-        CNI(is_nullptr)
-    }
+		CNI(is_nullptr)
+	}
 
 	CNI_NAMESPACE(types)
 	{
