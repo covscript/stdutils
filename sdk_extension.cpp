@@ -1,6 +1,124 @@
-#include <covscript/impl/impl.hpp>
 #include <covscript/cni.hpp>
+#include <covscript/covscript.hpp>
 #include <covscript/dll.hpp>
+#include <iostream>
+
+#ifdef COVSCRIPT_PLATFORM_WIN32
+
+#include <windows.h>
+
+bool ctrlhandler(DWORD fdwctrltype)
+{
+	switch (fdwctrltype) {
+	case CTRL_C_EVENT:
+		std::cout << "Keyboard Interrupt (Ctrl+C Received)" << std::endl;
+		cs::current_process->raise_sigint();
+		return true;
+	case CTRL_BREAK_EVENT: {
+		int code = 0;
+		cs::process_context::on_process_exit_default_handler(&code);
+		return true;
+	}
+	default:
+		return false;
+	}
+}
+
+void activate_sigint_handler()
+{
+	::SetConsoleCtrlHandler((PHANDLER_ROUTINE)ctrlhandler, true);
+}
+
+#else
+
+#include <signal.h>
+#include <unistd.h>
+
+void signal_handler(int sig)
+{
+	std::cout << "Keyboard Interrupt (Ctrl+C Received)" << std::endl;
+	cs::current_process->raise_sigint();
+}
+
+void activate_sigint_handler()
+{
+	struct sigaction sa_usr {};
+	sa_usr.sa_handler = &signal_handler;
+	sigemptyset(&sa_usr.sa_mask);
+	// sa_usr.sa_flags = SA_RESTART | SA_NODEFER;
+	sigaction(SIGINT, &sa_usr, NULL);
+}
+
+#endif
+
+class repl_instance final {
+	cs::context_t context;
+	cs::raii_collector context_gc;
+
+public:
+	cs::repl repl_impl;
+
+	repl_instance(const cs::array &args)
+		: context(cs::create_context(args)),
+		  context_gc(context),
+		  repl_impl(context)
+	{
+		activate_sigint_handler();
+		cs::current_process->on_process_exit.add_listener([](void *code) -> bool {
+			cs::current_process->exit_code = *static_cast<int *>(code);
+			throw cs::fatal_error("CS_EXIT");
+		});
+		cs::current_process->on_process_sigint.add_listener(
+		    [](void *) -> bool { throw cs::fatal_error("CS_SIGINT"); });
+		cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
+			std::cin.clear();
+			return false;
+		});
+	}
+	std::string readline()
+	{
+		std::string line;
+#ifdef COVSCRIPT_PLATFORM_WIN32
+		// Workaround: https://stackoverflow.com/a/26763490
+		while (true) {
+			cs::current_process->poll_event();
+			std::getline(std::cin, line);
+			if (std::cin) break;
+		}
+#else
+		if (!std::cin) {
+			int code = 0;
+			cs::process_context::on_process_exit_default_handler(&code);
+		}
+		std::getline(std::cin, line);
+		cs::current_process->poll_event();
+#endif
+		return std::move(line);
+	}
+	bool exec(const std::string &code)
+	{
+		try {
+			repl_impl.exec(code);
+		}
+		catch (const std::exception &e) {
+			if (std::strstr(e.what(), "CS_SIGINT") != nullptr) {
+				cs::process_context::cleanup_context();
+				repl_impl.reset_status();
+				activate_sigint_handler();
+			}
+			else if (std::strstr(e.what(), "CS_EXIT") == nullptr)
+				throw cs::lang_error(e.what());
+			else
+				return false;
+		}
+		catch (...) {
+			throw cs::lang_error("Uncaught exception: Unknown exception");
+		}
+		return true;
+	}
+};
+
+using repl_instance_t = std::shared_ptr<repl_instance>;
 
 CNI_ROOT_NAMESPACE {
 	using namespace cs;
@@ -54,7 +172,7 @@ CNI_ROOT_NAMESPACE {
 
 	CNI_NAMESPACE(function)
 	{
-		const var& get_callable(const cs::object_method &om) {
+		const var & get_callable(const cs::object_method &om) {
 			return om.callable;
 		}
 
@@ -94,7 +212,7 @@ CNI_ROOT_NAMESPACE {
 		CNI(get_type)
 	}
 
-	var catch_stdexcept(const var& func, const cs::array &argument)
+	var catch_stdexcept(const var &func, const cs::array &argument)
 	{
 		try {
 			if (func.type() == typeid(cs::callable)) {
@@ -117,13 +235,12 @@ CNI_ROOT_NAMESPACE {
 
 	CNI(catch_stdexcept)
 
-	template<typename T>
-	var predict_domain(T&& domain)
+	template <typename T>
+	var predict_domain(T &&domain)
 	{
 		cs::var ret = cs::var::make<cs::hash_set>();
 		cs::hash_set &set = ret.val<cs::hash_set>();
-		for (auto &it:domain)
-			set.insert(cs::var::make<cs::string>(it.first));
+		for (auto &it : domain) set.insert(cs::var::make<cs::string>(it.first));
 		return ret;
 	}
 
@@ -161,4 +278,26 @@ CNI_ROOT_NAMESPACE {
 	}
 
 	CNI(extend_type)
+
+	CNI_NAMESPACE(repl)
+	{
+		repl_instance_t create(const cs::array &args) {
+			return std::make_shared<repl_instance>(args);
+		}
+		CNI(create)
+		std::string readline(repl_instance_t & repl) {
+			return repl->readline();
+		}
+		CNI(readline)
+		bool exec(repl_instance_t & repl, const std::string &code) {
+			return repl->exec(code);
+		}
+		CNI(exec)
+		void reset(repl_instance_t & repl) {
+			repl->repl_impl.reset_status();
+		}
+		CNI(reset)
+	}
 }
+
+CNI_ENABLE_TYPE_EXT(repl, repl_instance_t)
