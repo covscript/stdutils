@@ -297,6 +297,10 @@ CNI_ROOT_NAMESPACE {
 			repl->repl_impl.reset_status();
 		}
 		CNI(reset)
+		void echo(repl_instance_t & repl, bool value) {
+			repl->repl_impl.echo = value;
+		}
+		CNI(echo)
 	}
 }
 
