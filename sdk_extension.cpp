@@ -1,5 +1,5 @@
-#include <covscript/cni.hpp>
 #include <covscript/covscript.hpp>
+#include <covscript/cni.hpp>
 #include <covscript/dll.hpp>
 #include <iostream>
 
@@ -284,22 +284,31 @@ CNI_ROOT_NAMESPACE {
 		repl_instance_t create(const cs::array &args) {
 			return std::make_shared<repl_instance>(args);
 		}
+
 		CNI(create)
+
 		std::string readline(repl_instance_t & repl) {
 			return repl->readline();
 		}
+
 		CNI(readline)
+
 		bool exec(repl_instance_t & repl, const std::string &code) {
 			return repl->exec(code);
 		}
+
 		CNI(exec)
+
 		void reset(repl_instance_t & repl) {
 			repl->repl_impl.reset_status();
 		}
+
 		CNI(reset)
+
 		void echo(repl_instance_t & repl, bool value) {
 			repl->repl_impl.echo = value;
 		}
+
 		CNI(echo)
 	}
 }
