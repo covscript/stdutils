@@ -54,6 +54,7 @@ void activate_sigint_handler()
 class repl_instance final {
 	cs::context_t context;
 	cs::raii_collector context_gc;
+	bool exit_flag = false;
 
 public:
 	cs::repl repl_impl;
@@ -68,34 +69,59 @@ public:
 			cs::current_process->exit_code = *static_cast<int *>(code);
 			throw cs::fatal_error("CS_EXIT");
 		});
-		cs::current_process->on_process_sigint.add_listener(
-		    [](void *) -> bool { throw cs::fatal_error("CS_SIGINT"); });
+		cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
+			throw cs::fatal_error("CS_SIGINT");
+		});
 		cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
 			std::cin.clear();
 			return false;
 		});
 	}
-	std::string readline()
+
+	bool has_exited() const
 	{
-		std::string line;
-#ifdef COVSCRIPT_PLATFORM_WIN32
-		// Workaround: https://stackoverflow.com/a/26763490
-		while (true) {
-			cs::current_process->poll_event();
-			std::getline(std::cin, line);
-			if (std::cin) break;
-		}
-#else
-		if (!std::cin) {
-			int code = 0;
-			cs::process_context::on_process_exit_default_handler(&code);
-		}
-		std::getline(std::cin, line);
-		cs::current_process->poll_event();
-#endif
-		return std::move(line);
+		return exit_flag;
 	}
-	bool exec(const std::string &code)
+
+	cs::var readline()
+	{
+		try {
+			std::string line;
+#ifdef COVSCRIPT_PLATFORM_WIN32
+			// Workaround: https://stackoverflow.com/a/26763490
+			while (true) {
+				cs::current_process->poll_event();
+				std::getline(std::cin, line);
+				if (std::cin) break;
+			}
+#else
+			if (!std::cin) {
+				int code = 0;
+				cs::process_context::on_process_exit_default_handler(&code);
+			}
+			std::getline(std::cin, line);
+			cs::current_process->poll_event();
+#endif
+			return std::move(line);
+		}
+		catch (const std::exception &e) {
+			if (std::strstr(e.what(), "CS_SIGINT") != nullptr) {
+				cs::process_context::cleanup_context();
+				repl_impl.reset_status();
+				activate_sigint_handler();
+			}
+			else if (std::strstr(e.what(), "CS_EXIT") == nullptr)
+				throw cs::lang_error(e.what());
+			else
+				exit_flag = true;
+		}
+		catch (...) {
+			throw cs::lang_error("Uncaught exception: Unknown exception");
+		}
+		return cs::null_pointer;
+	}
+
+	void exec(const std::string &code)
 	{
 		try {
 			repl_impl.exec(code);
@@ -109,12 +135,11 @@ public:
 			else if (std::strstr(e.what(), "CS_EXIT") == nullptr)
 				throw cs::lang_error(e.what());
 			else
-				return false;
+				exit_flag = true;
 		}
 		catch (...) {
 			throw cs::lang_error("Uncaught exception: Unknown exception");
 		}
-		return true;
 	}
 };
 
@@ -287,14 +312,20 @@ CNI_ROOT_NAMESPACE {
 
 		CNI(create)
 
-		std::string readline(repl_instance_t & repl) {
+		bool has_exited(const repl_instance_t & repl) {
+			return repl->has_exited();
+		}
+
+		CNI(has_exited)
+
+		cs::var readline(repl_instance_t & repl) {
 			return repl->readline();
 		}
 
 		CNI(readline)
 
-		bool exec(repl_instance_t & repl, const std::string &code) {
-			return repl->exec(code);
+		void exec(repl_instance_t & repl, const std::string &code) {
+			repl->exec(code);
 		}
 
 		CNI(exec)
