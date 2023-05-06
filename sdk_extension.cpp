@@ -52,6 +52,8 @@ void activate_sigint_handler()
 #endif
 
 class repl_instance final {
+	static std::size_t instance_count;
+	static cs::process_context *parent_context;
 	cs::context_t context;
 	cs::raii_collector context_gc;
 	bool exit_flag = false;
@@ -64,18 +66,30 @@ public:
 		  context_gc(context),
 		  repl_impl(context)
 	{
-		activate_sigint_handler();
-		cs::current_process->on_process_exit.add_listener([](void *code) -> bool {
-			cs::current_process->exit_code = *static_cast<int *>(code);
-			throw cs::fatal_error("CS_EXIT");
-		});
-		cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
-			throw cs::fatal_error("CS_SIGINT");
-		});
-		cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
-			std::cin.clear();
-			return false;
-		});
+		if (instance_count++ == 0) {
+			parent_context = cs::current_process;
+			cs::this_process.import_path = cs::current_process->import_path;
+			cs::current_process = &cs::this_process;
+			activate_sigint_handler();
+			cs::current_process->on_process_exit.add_listener([](void *code) -> bool {
+				cs::current_process->exit_code = *static_cast<int *>(code);
+				throw cs::fatal_error("CS_EXIT");
+			});
+			cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
+				throw cs::fatal_error("CS_SIGINT");
+			});
+			cs::current_process->on_process_sigint.add_listener([](void *) -> bool {
+				std::cin.clear();
+				return false;
+			});
+		}
+	}
+
+	~repl_instance()
+	{
+		if (--instance_count == 0) {
+			cs::current_process = parent_context;
+		}
 	}
 
 	bool has_exited() const
@@ -105,15 +119,12 @@ public:
 			return std::move(line);
 		}
 		catch (const std::exception &e) {
-			if (std::strstr(e.what(), "CS_SIGINT") != nullptr) {
-				cs::process_context::cleanup_context();
-				repl_impl.reset_status();
+			if (std::strstr(e.what(), "CS_SIGINT") != nullptr)
 				activate_sigint_handler();
-			}
-			else if (std::strstr(e.what(), "CS_EXIT") == nullptr)
-				throw cs::lang_error(e.what());
-			else
+			else if (std::strstr(e.what(), "CS_EXIT") != nullptr)
 				exit_flag = true;
+			else
+				throw cs::lang_error(e.what());
 		}
 		catch (...) {
 			throw cs::lang_error("Uncaught exception: Unknown exception");
@@ -121,27 +132,29 @@ public:
 		return cs::null_pointer;
 	}
 
-	void exec(const std::string &code)
+	bool exec(const std::string &code)
 	{
 		try {
 			repl_impl.exec(code);
+			return true;
 		}
 		catch (const std::exception &e) {
-			if (std::strstr(e.what(), "CS_SIGINT") != nullptr) {
-				cs::process_context::cleanup_context();
-				repl_impl.reset_status();
+			if (std::strstr(e.what(), "CS_SIGINT") != nullptr)
 				activate_sigint_handler();
-			}
-			else if (std::strstr(e.what(), "CS_EXIT") == nullptr)
-				throw cs::lang_error(e.what());
-			else
+			else if (std::strstr(e.what(), "CS_EXIT") != nullptr)
 				exit_flag = true;
+			else
+				throw cs::lang_error(e.what());
 		}
 		catch (...) {
 			throw cs::lang_error("Uncaught exception: Unknown exception");
 		}
+		return false;
 	}
 };
+
+std::size_t repl_instance::instance_count = 0;
+cs::process_context *repl_instance::parent_context = nullptr;
 
 using repl_instance_t = std::shared_ptr<repl_instance>;
 
@@ -324,13 +337,14 @@ CNI_ROOT_NAMESPACE {
 
 		CNI(readline)
 
-		void exec(repl_instance_t & repl, const std::string &code) {
-			repl->exec(code);
+		bool exec(repl_instance_t & repl, const std::string &code) {
+			return repl->exec(code);
 		}
 
 		CNI(exec)
 
 		void reset(repl_instance_t & repl) {
+			cs::process_context::cleanup_context();
 			repl->repl_impl.reset_status();
 		}
 
