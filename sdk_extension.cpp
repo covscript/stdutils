@@ -317,6 +317,13 @@ CNI_ROOT_NAMESPACE {
 
 	CNI(extend_type)
 
+	void set_import_path(const std::string &path)
+	{
+		cs::current_process->import_path = path;
+	}
+
+	CNI(set_import_path)
+
 	CNI_NAMESPACE(repl)
 	{
 		repl_instance_t create(const cs::array &args) {
