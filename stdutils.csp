@@ -21,6 +21,7 @@
 
 package stdutils
 
+import codec.json as json
 import bitwise
 
 namespace arr
@@ -180,4 +181,109 @@ function crc32_file(path)
         crc32val = crc32_tab.at(crc32val.logic_xor(bitwise.bitset.from_number(to_integer(ch))).logic_and("0xFF"hex).to_number()).logic_xor(crc32val.shift_right(8).logic_and("0x00FFFFFF"hex))
     end
     return crc32val.logic_xor("0xFFFFFFFF"hex).to_hash()
+end
+
+# Console Progress Bar
+
+class progress_bar
+    var last_percentage = -1
+    var progress = 0
+    var total = 100
+    var width = 50
+    function construct(_total)
+        total = _total
+    end
+    function reset()
+        last_percentage = -1
+        progress = 0
+    end
+    function show()
+        var percentage = progress/total
+        var black_blocks = to_integer(percentage*width)
+        var white_blocks = width - black_blocks
+        if last_percentage == black_blocks
+            return
+        end
+        last_percentage = black_blocks
+        system.console.echo(false)
+        system.out.print("\r")
+        foreach i in range(width + 5) do system.out.print(' ')
+        system.out.print("\r")
+        system.out.print("[")
+        foreach i in range(black_blocks) do system.out.print("#")
+        foreach i in range(white_blocks) do system.out.print(" ")
+        system.out.print("] " + to_integer(percentage*100) + "%")
+        system.console.echo(true)
+    end
+    function finish()
+        progress = total
+        show()
+        system.out.println("")
+        reset()
+    end
+end
+
+# JSON Utils
+
+function open_json(path)
+    var ifs = iostream.ifstream(path)
+    return json.to_var(json.from_stream(ifs))
+end
+
+function save_json(val, path)
+    var ofs = iostream.ofstream(path)
+    ofs.print(json.to_string(json.from_var(val)))
+end
+
+# CSV Reader
+
+function read_csv(file_name)
+    var ifs = iostream.ifstream(file_name)
+    if !ifs.good()
+        return null
+    end
+    var data = new array, line = new array, buff = new string
+    var input_escapes = 0
+    var escape_stack = 0
+    loop
+        var ch = ifs.get()
+        if ifs.eof()
+            line.push_back(buff)
+            data.push_back(line)
+            break
+        end
+        if escape_stack > 0
+            if ch == '\"'
+                ++input_escapes
+            end
+            if input_escapes - escape_stack == 1
+                ++escape_stack
+                input_escapes = 0
+            else
+                if input_escapes == escape_stack
+                    --escape_stack
+                    input_escapes = 0
+                end
+            end
+            buff += ch
+            continue
+        end
+        if ch == '\"'
+            ++escape_stack
+        end
+        if ch == ','
+            line.push_back(buff)
+            buff = new string
+            continue
+        end
+        if ch == '\n'
+            line.push_back(buff)
+            buff = new string
+            data.push_back(line)
+            line.clear()
+            continue
+        end
+        buff += ch
+    end
+    return move(data)
 end
