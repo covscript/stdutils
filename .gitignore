@@ -9,3 +9,4 @@ bitwise.cse
 *.csx
 *.dll
 *.so
+.ecs_output/
