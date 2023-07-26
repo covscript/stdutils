@@ -8,6 +8,7 @@ var co = new stdutils.coroutine{[](queue, msg){
             system.out.println(queue.get()[0])
         end
     end
+    system.out.println("Bye~")
 }}
 
 co.join("Hello")
