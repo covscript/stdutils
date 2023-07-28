@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Copyright (C) 2017-2021 Michael Lee(李登淳)
+# Copyright (C) 2017-2023 Michael Lee(李登淳)
 #
 # Email:   lee@covariant.cn, mikecovlee@163.com
 # Github:  https://github.com/mikecovlee
@@ -286,4 +286,121 @@ function read_csv(file_name)
         buff += ch
     end
     return move(data)
+end
+
+# Coroutine Utils
+
+class coroutine_queue
+    var data = new array
+    var incoming = false
+    function yield(...args)
+        if !args.empty()
+            data = args
+            incoming = true
+        else
+            incoming = false
+        end
+        runtime.yield()
+    end
+    function avail()
+        return incoming
+    end
+    function get()
+        if !incoming
+            return null
+        end
+        incoming = false
+        if data.size == 1
+            return data.front
+        else
+            return data
+        end
+    end
+end
+
+function coroutine_worker(obj, args)
+    obj->running = true
+    obj->func(obj->queue, args...)
+    obj->running = false
+end
+
+namespace coroutine_status
+    constant normal = 0
+    constant error  = -1
+    constant finish = -2
+end
+
+class coroutine
+    var co = null
+    var func = null
+    var running = false
+    var queue = new coroutine_queue
+    function construct(_func)
+        func = _func
+    end
+    function join(...args)
+        co = runtime.create_co_s(coroutine_worker, {&this, args})
+        return runtime.resume(co)
+    end
+    function detach(...args)
+        co = runtime.create_co_s(coroutine_worker, {&this, args})
+    end
+    function resume(...args)
+        if !args.empty()
+            queue.data = args
+            queue.incoming = true
+        else
+            queue.incoming = false
+        end
+        return runtime.resume(co)
+    end
+    function avail()
+        return queue.incoming
+    end
+    function get()
+        if !queue.incoming
+            return null
+        end
+        queue.incoming = false
+        if queue.data.size == 1
+            return queue.data.front
+        else
+            return queue.data
+        end
+    end
+end
+
+# String Formatter
+
+function format(fmt, map)
+    var str = new string
+    var fmt_buff = new string
+    var fmt_flag = 0
+    foreach ch in fmt
+        if ch == '{'
+            ++fmt_flag
+            continue
+        end
+        if fmt_flag == 1
+            if ch == '}'
+                if --fmt_flag == 0
+                    if map.exist(fmt_buff)
+                        str += map.at(fmt_buff)
+                        fmt_buff = new string
+                    else
+                        str += "{}"
+                    end
+                    continue
+                end
+            end
+            fmt_buff += ch
+            continue
+        end
+        if fmt_flag > 1
+            foreach i in range(fmt_flag) do str += '{'
+            fmt_flag = 0
+        end
+        str += ch
+    end
+    return move(str)
 end

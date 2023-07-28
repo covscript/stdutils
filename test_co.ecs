@@ -1,0 +1,21 @@
+import stdutils
+
+var co = new stdutils.coroutine{[](queue, msg){
+    system.out.println(msg)
+    foreach i in range(10)
+        queue.yield(i)
+        if queue.avail()
+            system.out.println(queue.get())
+        end
+    end
+    system.out.println("Bye~")
+}}
+
+co.join("Hello")
+var val = 0
+loop
+    if co.queue.avail()
+        val = co.get()
+        system.out.println(val)
+    end
+until co.resume(val + 1) == stdutils.coroutine_status.finish
