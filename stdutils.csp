@@ -355,3 +355,38 @@ class coroutine
         return queue.data
     end
 end
+
+# String Formatter
+
+function format(fmt, map)
+    var str = new string
+    var fmt_buff = new string
+    var fmt_flag = 0
+    foreach ch in fmt
+        if ch == '{'
+            ++fmt_flag
+            continue
+        end
+        if fmt_flag == 1
+            if ch == '}'
+                if --fmt_flag == 0
+                    if map.exist(fmt_buff)
+                        str += map.at(fmt_buff)
+                        fmt_buff = new string
+                    else
+                        str += "{}"
+                    end
+                    continue
+                end
+            end
+            fmt_buff += ch
+            continue
+        end
+        if fmt_flag > 1
+            foreach i in range(fmt_flag) do str += '{'
+            fmt_flag = 0
+        end
+        str += ch
+    end
+    return move(str)
+end
