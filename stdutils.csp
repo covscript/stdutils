@@ -310,7 +310,11 @@ class coroutine_queue
             return null
         end
         incoming = false
-        return data
+        if data.size == 1
+            return data.front
+        else
+            return data
+        end
     end
 end
 
@@ -318,6 +322,12 @@ function coroutine_worker(obj, args)
     obj->running = true
     obj->func(obj->queue, args...)
     obj->running = false
+end
+
+namespace coroutine_status
+    constant normal = 0
+    constant error  = -1
+    constant finish = -2
 end
 
 class coroutine
@@ -352,7 +362,11 @@ class coroutine
             return null
         end
         queue.incoming = false
-        return queue.data
+        if queue.data.size == 1
+            return queue.data.front
+        else
+            return queue.data
+        end
     end
 end
 

@@ -5,7 +5,7 @@ var co = new stdutils.coroutine{[](queue, msg){
     foreach i in range(10)
         queue.yield(i)
         if queue.avail()
-            system.out.println(queue.get()[0])
+            system.out.println(queue.get())
         end
     end
     system.out.println("Bye~")
@@ -15,7 +15,7 @@ co.join("Hello")
 var val = 0
 loop
     if co.queue.avail()
-        val = co.get()[0]
+        val = co.get()
         system.out.println(val)
     end
-until co.resume(val + 1) == -2
+until co.resume(val + 1) == stdutils.coroutine_status.finish
