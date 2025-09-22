@@ -51,11 +51,10 @@ void activate_sigint_handler()
 
 #endif
 
+static bool signal_handler_installed = false;
+
 class repl_instance final {
-	static std::size_t instance_count;
-	static cs::process_context *parent_context;
 	cs::context_t context;
-	cs::raii_collector context_gc;
 	bool exit_flag = false;
 
 public:
@@ -63,13 +62,9 @@ public:
 
 	repl_instance(const cs::array &args)
 		: context(cs::create_context(args)),
-		  context_gc(context),
 		  repl_impl(context)
 	{
-		if (instance_count++ == 0) {
-			parent_context = cs::current_process;
-			cs::this_process.import_path = cs::current_process->import_path;
-			cs::current_process = &cs::this_process;
+		if (!signal_handler_installed) {
 			activate_sigint_handler();
 			cs::current_process->on_process_exit.add_listener([](void *code) -> bool {
 				cs::current_process->exit_code = *static_cast<int *>(code);
@@ -82,15 +77,11 @@ public:
 				std::cin.clear();
 				return false;
 			});
+			signal_handler_installed = true;
 		}
 	}
 
-	~repl_instance()
-	{
-		if (--instance_count == 0) {
-			cs::current_process = parent_context;
-		}
-	}
+	~repl_instance() = default;
 
 	bool has_exited() const
 	{
@@ -152,9 +143,6 @@ public:
 		return false;
 	}
 };
-
-std::size_t repl_instance::instance_count = 0;
-cs::process_context *repl_instance::parent_context = nullptr;
 
 using repl_instance_t = std::shared_ptr<repl_instance>;
 
@@ -351,7 +339,6 @@ CNI_ROOT_NAMESPACE {
 		CNI(exec)
 
 		void reset(repl_instance_t & repl) {
-			cs::process_context::cleanup_context();
 			repl->repl_impl.reset_status();
 		}
 
