@@ -300,7 +300,7 @@ CNI_ROOT_NAMESPACE {
 
 	void extend_type(cs::type_t &type, const std::string &name, const var &obj)
 	{
-		type.extensions->add_var(name, obj);
+		type.extensions->add_var(name.data(), obj);
 	}
 
 	CNI(extend_type)

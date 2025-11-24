@@ -132,8 +132,7 @@ struct resource_holder_impl<numeric_holder<T>> final : public resource_holder {
 	T data;
 	resource_holder_impl() = default;
 	resource_holder_impl(T val) : data(val) {}
-	virtual cs::var get_var() const
-	{
+	virtual cs::var get_var() const {
 		return cs::var::make<cs::numeric>(data);
 	}
 	virtual void *get_ptr() const
@@ -238,7 +237,8 @@ public:
 		std::unique_ptr<ffi_type *[]> arg_types(new ffi_type *[args.size()]);
 		std::unique_ptr<void *[]> arg_data(new void *[args.size()]);
 		std::vector<std::unique_ptr<resource_holder>> hosted_res;
-		for (std::size_t i = 0; i < args.size(); ++i) {
+		for (std::size_t i = 0; i < args.size(); ++i)
+		{
 			const cs::var &it = args[i];
 			if (it.type() == typeid(cs::numeric)) {
 				const cs::numeric &num = it.const_val<cs::numeric>();
@@ -297,7 +297,8 @@ public:
 			throw cs::runtime_error("Unmatched argument size.");
 		std::unique_ptr<void *[]> arg_data(new void *[args.size()]);
 		std::vector<std::unique_ptr<resource_holder>> hosted_res;
-		for (std::size_t i = 0; i < args.size(); ++i) {
+		for (std::size_t i = 0; i < args.size(); ++i)
+		{
 			const cs::var &it = args[i];
 			if (it.type() == typeid(cs::numeric)) {
 				const cs::numeric &num = it.const_val<cs::numeric>();
@@ -331,26 +332,50 @@ public:
 				throw cs::runtime_error("Unsupported type in cffi.");
 			arg_data[i] = hosted_res.back()->get_ptr();
 		}
-		if (restype != cffi_type::ffi_void) {
+		if (restype != cffi_type::ffi_void)
+		{
 			std::unique_ptr<resource_holder> return_data(make_resource_holder(restype));
 			ffi_call(&_ffi_cif, target_func, return_data->get_ptr(), arg_data.get());
 			return return_data->get_var();
 		}
-		else {
+		else
+		{
 			ffi_call(&_ffi_cif, target_func, nullptr, arg_data.get());
 			return cs::null_pointer;
 		}
 	}
 };
 
-using dll_type = std::shared_ptr<cov::dll>;
+struct dll_holder {
+	void *handle = nullptr;
+
+	dll_holder(std::string_view path)
+	{
+		handle = cs::dll::open(path);
+	}
+
+	dll_holder(const dll_holder &) = delete;
+
+	~dll_holder()
+	{
+		if (handle != nullptr)
+			cs::dll::close(handle);
+	}
+
+	void *get_address(std::string_view sym)
+	{
+		return cs::dll::find_symbol(handle, sym);
+	}
+};
+
+using dll_type = std::shared_ptr<dll_holder>;
 
 CNI_ROOT_NAMESPACE {
 	using namespace cs;
 
 	dll_type import_lib(const std::string& path)
 	{
-		return std::make_shared<cov::dll>(path);
+		return std::make_shared<dll_holder>(path);
 	}
 
 	CNI(import_lib)
