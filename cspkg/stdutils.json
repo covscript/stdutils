@@ -1,8 +1,8 @@
 {
     "Name": "stdutils",
     "Info": "Standard Library Utilities",
-    "Author": "Covariant Script Organization",
-    "Version": "1.1.0",
+    "Author": "CovScript Organization",
+    "Version": "2.0.0",
     "Target": "https://raw.githubusercontent.com/covscript/stdutils/main/stdutils.csp",
     "Dependencies": [
         "bitwise",

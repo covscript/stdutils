@@ -3,7 +3,7 @@
     "Name": "bitwise",
     "Info": "Bitwise Extension",
     "Author": "CovScript Organization",
-    "Version": "1.0.3",
+    "Version": "1.1.0",
     "Target": "build/imports/bitwise.cse",
     "Dependencies": []
 }

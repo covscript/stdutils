@@ -11,7 +11,7 @@ else ()
     message(FATAL_ERROR "-- CovScript SDK not detected. Please set environment variable CS_DEV_PATH")
 endif ()
 
-if (APPLE)
+if (APPLE OR UNIX)
     find_package(PkgConfig REQUIRED)
     pkg_search_module(FFI REQUIRED libffi)
     include_directories(${FFI_INCLUDE_DIRS})
@@ -27,18 +27,30 @@ target_link_libraries(cffi ffi covscript)
 target_link_libraries(bitwise covscript)
 target_link_libraries(sdk_extension covscript)
 
-set_target_properties(cffi PROPERTIES OUTPUT_NAME cffi)
-set_target_properties(cffi PROPERTIES PREFIX "")
-set_target_properties(cffi PROPERTIES SUFFIX ".cse")
+foreach (target cffi bitwise sdk_extension)
+    set_target_properties(${target} PROPERTIES
+        OUTPUT_NAME ${target}
+        PREFIX ""
+        SUFFIX ".cse"
+    )
+endforeach ()
 
-set_target_properties(bitwise PROPERTIES OUTPUT_NAME bitwise)
-set_target_properties(bitwise PROPERTIES PREFIX "")
-set_target_properties(bitwise PROPERTIES SUFFIX ".cse")
+set_target_properties(test_cffi PROPERTIES
+    OUTPUT_NAME test_cffi
+    PREFIX ""
+    SUFFIX ".csx"
+)
 
-set_target_properties(sdk_extension PROPERTIES OUTPUT_NAME sdk_extension)
-set_target_properties(sdk_extension PROPERTIES PREFIX "")
-set_target_properties(sdk_extension PROPERTIES SUFFIX ".cse")
+install(TARGETS cffi bitwise sdk_extension
+    LIBRARY DESTINATION imports
+    RUNTIME DESTINATION imports
+)
 
-set_target_properties(test_cffi PROPERTIES OUTPUT_NAME test_cffi)
-set_target_properties(test_cffi PROPERTIES PREFIX "")
-set_target_properties(test_cffi PROPERTIES SUFFIX ".csx")
+install(TARGETS test_cffi
+    LIBRARY DESTINATION tests
+    RUNTIME DESTINATION tests
+)
+
+install(FILES stdutils.csp
+    DESTINATION imports
+)
